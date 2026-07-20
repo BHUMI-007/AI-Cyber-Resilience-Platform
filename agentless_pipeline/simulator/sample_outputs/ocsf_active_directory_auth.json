@@ -1,0 +1,1 @@
+{"class_uid": 3002, "category_uid": 3, "activity_id": 1, "severity_id": 1, "time": 1783687661789, "user": {"name": "Administrator", "domain": "CORP"}, "src_endpoint": {"ip": "10.0.20.10"}, "logon_type": 3, "metadata": {"product": {"name": "Active Directory Security Audit", "vendor": "Microsoft"}}}

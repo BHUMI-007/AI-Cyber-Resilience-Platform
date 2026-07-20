@@ -1,0 +1,44 @@
+# ot.rules
+# Custom Suricata signatures for Operational Technology (OT) protocol security auditing
+
+# ==========================================
+# 1. Modbus TCP Threat Detection (Port 502)
+# ==========================================
+
+# Alert on Modbus Write Single Coil (Function 5) - potentially changing binary output state (e.g. valve/solenoid)
+alert modbus any any -> any any (msg:"OT-IDS Modbus Write Single Coil Command"; modbus: function 5; sid:1000001; rev:1; metadata:created_at 2026_07_10, protocol modbus;)
+
+# Alert on Modbus Write Single Register (Function 6) - potentially altering control setpoint
+alert modbus any any -> any any (msg:"OT-IDS Modbus Write Single Register Command"; modbus: function 6; sid:1000002; rev:1; metadata:created_at 2026_07_10, protocol modbus;)
+
+# Alert on Modbus Write Multiple Coils (Function 15) - bulk write command
+alert modbus any any -> any any (msg:"OT-IDS Modbus Write Multiple Coils Command"; modbus: function 15; sid:1000003; rev:1; metadata:created_at 2026_07_10, protocol modbus;)
+
+# Alert on Modbus Write Multiple Registers (Function 16) - bulk setpoint modification
+alert modbus any any -> any any (msg:"OT-IDS Modbus Write Multiple Registers Command"; modbus: function 16; sid:1000004; rev:1; metadata:created_at 2026_07_10, protocol modbus;)
+
+# Alert on Modbus Read Device Identification (Function 43) - often used for network reconnaissance/recon scans
+alert modbus any any -> any any (msg:"OT-IDS Modbus Device Reconnaissance Scan"; modbus: function 43; sid:1000005; rev:1; metadata:created_at 2026_07_10, protocol modbus;)
+
+
+# ==========================================
+# 2. DNP3 Threat Detection (Port 20000)
+# ==========================================
+
+# Alert on DNP3 Cold Restart (Function 13) - attempts to reboot outstation controller
+alert dnp3 any any -> any any (msg:"OT-IDS DNP3 Cold Restart Request"; dnp3: function 13; sid:1000011; rev:1; metadata:created_at 2026_07_10, protocol dnp3;)
+
+# Alert on DNP3 Warm Restart (Function 14) - soft reboot
+alert dnp3 any any -> any any (msg:"OT-IDS DNP3 Warm Restart Request"; dnp3: function 14; sid:1000012; rev:1; metadata:created_at 2026_07_10, protocol dnp3;)
+
+# Alert on DNP3 Stop Application (Function 18) - halts execution of control application
+alert dnp3 any any -> any any (msg:"OT-IDS DNP3 Stop Application Request"; dnp3: function 18; sid:1000013; rev:1; metadata:created_at 2026_07_10, protocol dnp3;)
+
+
+# ==========================================
+# 3. IEC 60870-5-104 Threat Detection (Port 2404)
+# ==========================================
+
+# Alert on any TCP packet targeting port 2404 starting with standard APDU start character 0x68 (APCI Start)
+# This flags active IEC 104 traffic for connection auditing
+alert tcp any any -> any 2404 (msg:"OT-IDS IEC 104 Connection Established"; flow:to_server,established; content:"|68|"; depth:1; sid:1000021; rev:1; metadata:created_at 2026_07_10, protocol iec104;)

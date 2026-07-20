@@ -1,0 +1,1 @@
+{"class_uid": 4001, "category_uid": 4, "activity_id": 0, "severity_id": 1, "time": 1773050100123, "src_endpoint": {"ip": "10.0.10.25", "port": 49152}, "dst_endpoint": {"ip": "10.0.10.5", "port": 80}, "connection_info": {"protocol_name": "tcp"}, "metadata": {"product": {"name": "Zeek Connection Logs", "vendor": "Corelight", "version": "6.0.0"}}}

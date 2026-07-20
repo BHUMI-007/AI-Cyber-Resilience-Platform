@@ -1,0 +1,1 @@
+{"ts":1773050105.5678,"uid":"C987654321","id":{"orig_h":"10.0.20.10","orig_p":50201,"resp_h":"10.0.20.50","resp_p":502},"service":"modbus","func":"write_multiple_registers","func_code":16,"unit_id":1,"address":"40001","value":"00FF0000"}

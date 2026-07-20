@@ -1,0 +1,25 @@
+# Byte-compiled / Python local caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS System Files
+.DS_Store
+Thumbs.db
+
+# Dynamic / Local Data & Logs
+*.log
+*.sqlite
+scratch/

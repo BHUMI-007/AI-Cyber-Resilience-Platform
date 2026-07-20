@@ -1,0 +1,60 @@
+# suricata.yaml
+# Passive Network IDS configuration for core network switches / SPAN ports
+
+# 1. Define the network interface where SPAN traffic is received
+# In a production environment, change this to your dedicated monitoring interface (e.g. eth1, ens224)
+af-packet:
+  - interface: eth1
+    cluster-id: 99
+    cluster-type: cluster_flow
+    defrag: yes
+    use-mmap: yes
+    tpacket-v3: yes
+
+# 2. Configure the telemetry output (EVE JSON format)
+# Vector will ingest this single JSON output stream for all Suricata findings
+outputs:
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: eve.json
+      types:
+        - alert:
+            payload: yes             # Include raw packet payload for deep analysis
+            payload-buffer-size: 4kb
+            payload-printable: yes
+            packet: yes              # Include packet headers
+            metadata: yes            # Include rule metadata
+        - http:
+            extended: yes
+        - dns:
+            query: yes
+            version: 2
+        - tls:
+            extended: yes
+        - flow:                      # Netflow-equivalent logs generated passively
+            enabled: yes
+        - modbus:                    # Detailed Modbus transaction logging
+            enabled: yes
+        - dnp3:                      # Detailed DNP3 transaction logging
+            enabled: yes
+
+# 3. Enable application layer protocol parsers
+app-layer:
+  protocols:
+    modbus:
+      enabled: yes
+      detection-ports:
+        dp: 502
+    dnp3:
+      enabled: yes
+      detection-ports:
+        dp: 20000
+    # Custom rule-based parsing can also target IEC 104 on port 2404
+    tcp-ports:
+      detect: 2404
+
+# 4. Reference custom OT rule files for signature detection
+default-rule-path: /home/venom/.gemini/antigravity/scratch/agentless_pipeline/suricata/rules
+rule-files:
+  - ot.rules

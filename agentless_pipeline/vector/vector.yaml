@@ -1,0 +1,264 @@
+# vector.yaml
+# High-Throughput Unified Event Bus & OCSF Normalization Pipeline
+
+# ==========================================
+# 1. Sources (TCP Network Sockets)
+# ==========================================
+
+sources:
+  zeek_conn:
+    type: "socket"
+    address: "0.0.0.0:9001"
+    mode: "tcp"
+    decoding:
+      codec: "json"
+
+  zeek_ot:
+    type: "socket"
+    address: "0.0.0.0:9002"
+    mode: "tcp"
+    decoding:
+      codec: "json"
+
+  suricata:
+    type: "socket"
+    address: "0.0.0.0:9003"
+    mode: "tcp"
+    decoding:
+      codec: "json"
+
+  sysmon:
+    type: "socket"
+    address: "0.0.0.0:9004"
+    mode: "tcp"
+    decoding:
+      codec: "json"
+
+  active_directory:
+    type: "socket"
+    address: "0.0.0.0:9005"
+    mode: "tcp"
+    decoding:
+      codec: "json"
+
+# ==========================================
+# 2. Transforms (OCSF Mapping via VRL)
+# ==========================================
+
+transforms:
+  # Normalizes standard Zeek network connections (conn.log) to OCSF 4001
+  normalize_zeek_conn:
+    type: "remap"
+    inputs: ["zeek_conn"]
+    source: |
+      # Base schema
+      .class_uid = 4001
+      .category_uid = 4
+      .activity_id = 0
+      .severity_id = 1
+      
+      # Timestamp mapping (convert float seconds to milliseconds)
+      ts_float = to_float(.ts) ?? 0.0
+      .time = to_int!(ts_float * 1000.0)
+      
+      # Source & Destination endpoints
+      .src_endpoint.ip = to_string(get(., ["id", "orig_h"])) ?? "0.0.0.0"
+      .src_endpoint.port = to_int(get(., ["id", "orig_p"])) ?? 0
+      .dst_endpoint.ip = to_string(get(., ["id", "resp_h"])) ?? "0.0.0.0"
+      .dst_endpoint.port = to_int(get(., ["id", "resp_p"])) ?? 0
+      
+      # Connection Info
+      .connection_info.protocol_name = downcase(to_string(.proto) ?? "tcp") ?? "tcp"
+      
+      # Product details
+      .metadata.product.name = "Zeek Connection Logs"
+      .metadata.product.vendor = "Corelight"
+      .metadata.product.version = "6.0.0"
+      
+      # Clean up raw fields to limit footprint
+      del(.ts)
+      del(.uid)
+      del(.id)
+      del(.proto)
+
+  # Normalizes OT protocol logs (Modbus, DNP3, IEC 104) to OCSF 4001 with custom profile extensions
+  normalize_zeek_ot:
+    type: "remap"
+    inputs: ["zeek_ot"]
+    source: |
+      .class_uid = 4001
+      .category_uid = 4
+      .activity_id = 0
+      .severity_id = 1
+      
+      ts_float = to_float(.ts) ?? 0.0
+      .time = to_int!(ts_float * 1000.0)
+      
+      .src_endpoint.ip = to_string(get(., ["id", "orig_h"])) ?? "0.0.0.0"
+      .src_endpoint.port = to_int(get(., ["id", "orig_p"])) ?? 0
+      .dst_endpoint.ip = to_string(get(., ["id", "resp_h"])) ?? "0.0.0.0"
+      .dst_endpoint.port = to_int(get(., ["id", "resp_p"])) ?? 0
+      
+      .connection_info.protocol_name = "tcp"
+      
+      .metadata.product.name = "Zeek OT Parser"
+      .metadata.product.vendor = "Corelight"
+      
+      # ---------------------------------------------
+      # Register custom profile extension block (OT)
+      # ---------------------------------------------
+      .extensions.ot_extension.protocol = "unknown"
+      
+      # A. Modbus parsing
+      if exists(.func_code) || exists(.func) {
+        .extensions.ot_extension.protocol = "modbus"
+        .extensions.ot_extension.function_code = to_int(.func_code) ?? 0
+        .extensions.ot_extension.function_name = to_string(.func) ?? "unknown"
+        .extensions.ot_extension.unit_id = to_int(.unit_id) ?? 0
+        .extensions.ot_extension.address = to_string(.address) ?? "unknown"
+        .extensions.ot_extension.value = to_string(.value) ?? ""
+      }
+      
+      # B. DNP3 parsing
+      if exists(.fc_request) || exists(.fc_response) {
+        .extensions.ot_extension.protocol = "dnp3"
+        .extensions.ot_extension.function_name = to_string(.fc_request ?? .fc_response) ?? "unknown"
+        .extensions.ot_extension.dnp3_iin = to_string(.iin) ?? "0"
+      }
+      
+      # C. IEC 104 parsing
+      if exists(.apdu_type) {
+        .extensions.ot_extension.protocol = "iec104"
+        .extensions.ot_extension.iec104_coa = to_int(.coa) ?? 0
+        .extensions.ot_extension.iec104_ioa = to_int(.ioa) ?? 0
+        .extensions.ot_extension.iec104_cot = to_int(.cot) ?? 0
+        .extensions.ot_extension.value = to_string(.value) ?? ""
+      }
+      
+      del(.ts)
+      del(.id)
+      del(.uid)
+      del(.service)
+
+  # Normalizes Suricata intrusion alerts (EVE.json) to OCSF 2004 (Detection Finding) or 4001 (Flows)
+  normalize_suricata:
+    type: "remap"
+    inputs: ["suricata"]
+    source: |
+      if exists(.alert) {
+        .class_uid = 2004
+        .category_uid = 2
+        .activity_id = 1
+        
+        parsed_time = parse_timestamp(.timestamp, "%Y-%m-%dT%H:%M:%S.%f%z") ?? parse_timestamp(.timestamp, "%Y-%m-%dT%H:%M:%S.%f") ?? now()
+        .time = to_unix_timestamp!(parsed_time, "milliseconds")
+        
+        # Map alert priority (1 = high, 4 = low) to OCSF severity ids
+        pri = to_int(.alert.priority) ?? 3
+        .severity_id = if pri == 1 { 5 } else if pri == 2 { 4 } else if pri == 3 { 3 } else { 2 }
+        
+        .finding_info.title = to_string(.alert.signature) ?? "Unknown Alert"
+        .finding_info.uid = to_string(.alert.signature_id) ?? "0"
+        
+        .src_endpoint.ip = to_string(.src_ip) ?? "0.0.0.0"
+        .src_endpoint.port = to_int(.src_port) ?? 0
+        .dst_endpoint.ip = to_string(.dest_ip) ?? "0.0.0.0"
+        .dst_endpoint.port = to_int(.dest_port) ?? 0
+        
+        .metadata.product.name = "Suricata Alert"
+        .metadata.product.vendor = "OISF"
+      } else {
+        .class_uid = 4001
+        .category_uid = 4
+        .activity_id = 0
+        .severity_id = 1
+        
+        parsed_time = parse_timestamp(.timestamp, "%Y-%m-%dT%H:%M:%S.%f%z") ?? parse_timestamp(.timestamp, "%Y-%m-%dT%H:%M:%S.%f") ?? now()
+        .time = to_unix_timestamp!(parsed_time, "milliseconds")
+        
+        .src_endpoint.ip = to_string(.src_ip) ?? "0.0.0.0"
+        .src_endpoint.port = to_int(.src_port) ?? 0
+        .dst_endpoint.ip = to_string(.dest_ip) ?? "0.0.0.0"
+        .dst_endpoint.port = to_int(.dest_port) ?? 0
+        
+        .connection_info.protocol_name = downcase(to_string(.proto) ?? "tcp") ?? "tcp"
+        
+        .metadata.product.name = "Suricata Flow Logs"
+        .metadata.product.vendor = "OISF"
+      }
+
+  # Normalizes Windows Sysmon Process Launches (Event ID 1) to OCSF 1007 (Process Activity)
+  normalize_sysmon:
+    type: "remap"
+    inputs: ["sysmon"]
+    source: |
+      .class_uid = 1007
+      .category_uid = 1
+      .activity_id = 1
+      .severity_id = 1
+      
+      system_time = get(., ["Event", "System", "TimeCreated", "SystemTime"]) ?? get(., ["TimeCreated"]) ?? ""
+      parsed_time = parse_timestamp(to_string(system_time) ?? "", "%Y-%m-%dT%H:%M:%S.%fZ") ?? now()
+      .time = to_unix_timestamp!(parsed_time, "milliseconds")
+      
+      .process.name = to_string(get(., ["Event", "EventData", "Image"])) ?? "unknown"
+      .process.pid = to_int(get(., ["Event", "EventData", "ProcessId"])) ?? 0
+      .process.cmd_line = to_string(get(., ["Event", "EventData", "CommandLine"])) ?? ""
+      
+      .process.parent_process.name = to_string(get(., ["Event", "EventData", "ParentImage"])) ?? "unknown"
+      .process.parent_process.pid = to_int(get(., ["Event", "EventData", "ParentProcessId"])) ?? 0
+      
+      .actor.user.name = to_string(get(., ["Event", "EventData", "User"])) ?? "unknown"
+      
+      .metadata.product.name = "Sysmon"
+      .metadata.product.vendor = "Microsoft"
+
+  # Normalizes Active Directory Logon Events (Event ID 4624) to OCSF 3002 (Authentication Activity)
+  normalize_ad:
+    type: "remap"
+    inputs: ["active_directory"]
+    source: |
+      .class_uid = 3002
+      .category_uid = 3
+      .activity_id = 1
+      .severity_id = 1
+      
+      system_time = get(., ["Event", "System", "TimeCreated", "SystemTime"]) ?? get(., ["TimeCreated"]) ?? ""
+      parsed_time = parse_timestamp(to_string(system_time) ?? "", "%Y-%m-%dT%H:%M:%S.%fZ") ?? now()
+      .time = to_unix_timestamp!(parsed_time, "milliseconds")
+      
+      .user.name = to_string(get(., ["Event", "EventData", "TargetUserName"]) ?? get(., ["TargetUserName"])) ?? "unknown"
+      .user.domain = to_string(get(., ["Event", "EventData", "TargetDomainName"]) ?? get(., ["TargetDomainName"])) ?? "unknown"
+      
+      src_ip = to_string(get(., ["Event", "EventData", "IpAddress"]) ?? get(., ["IpAddress"])) ?? "127.0.0.1"
+      .src_endpoint.ip = if src_ip == "-" { "127.0.0.1" } else { src_ip }
+      
+      logon_type_str = to_string(get(., ["Event", "EventData", "LogonType"]) ?? get(., ["LogonType"])) ?? "3"
+      .logon_type = to_int(logon_type_str) ?? 3
+      
+      .metadata.product.name = "Active Directory Security Audit"
+      .metadata.product.vendor = "Microsoft"
+
+# ==========================================
+# 3. Sinks (Kafka Output with Disk Buffers)
+# ==========================================
+
+sinks:
+  kafka_sink:
+    type: "kafka"
+    inputs: 
+      - "normalize_zeek_conn"
+      - "normalize_zeek_ot"
+      - "normalize_suricata"
+      - "normalize_sysmon"
+      - "normalize_ad"
+    bootstrap_servers: "kafka-broker-1.internal:9092,kafka-broker-2.internal:9092"
+    topic: "normalized-security-telemetry"
+    encoding:
+      codec: "json"
+    
+    # Disk buffer configuration to prevent packet/log loss during traffic spikes
+    buffer:
+      type: "disk"
+      max_size: 10737418240 # 10 GiB disk buffer size limit
+      when_full: "block"    # Block upstream socket when buffer is full to prevent log loss
