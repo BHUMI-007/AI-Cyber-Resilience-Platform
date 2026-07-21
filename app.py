@@ -30,7 +30,15 @@ st.markdown("""
 <style>
 .stApp { background: radial-gradient(circle at 20% 0%, #0d1520 0%, #05080c 60%); }
 h1, h2, h3 { font-family: 'Courier New', monospace !important; letter-spacing: 0.5px; }
-[data-testid="stMetricValue"] { font-family: 'Courier New', monospace; }
+[data-testid="stMetricValue"] { font-family: 'Courier New', monospace; color: #ffffff !important; }
+/* Streamlit's default text renders as a dull grey against our dark background -- force white */
+.stApp, .stApp p, .stApp li, .stApp span, .stApp label,
+.stMarkdown, .stMarkdown p, .stMarkdown li, .stMarkdown span,
+[data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p,
+[data-testid="stMetricLabel"], [data-testid="stMetricLabel"] p,
+[data-testid="stMetricDelta"], [data-testid="stWidgetLabel"] p,
+[data-testid="stExpander"] summary, [data-testid="stExpander"] summary span,
+small { color: #ffffff !important; }
 .ops-banner {
   padding: 14px 22px; border-radius: 10px; font-family: 'Courier New', monospace;
   font-size: 18px; font-weight: 700; margin-bottom: 18px; letter-spacing: 1px;
@@ -38,7 +46,7 @@ h1, h2, h3 { font-family: 'Courier New', monospace !important; letter-spacing: 0
 .term {
   background: #05080c; border: 1px solid #1c2a3a; border-radius: 8px; padding: 16px;
   font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.55;
-  height: 380px; overflow-y: auto; color: #c7d3de;
+  height: 380px; overflow-y: auto; color: #ffffff;
 }
 .term .thought { color: #38bdf8; }
 .term .action { color: #fbbf24; }
@@ -166,7 +174,7 @@ def render_graph(result):
 
     fig.add_trace(go.Scatter(
         x=xs, y=ys, mode="markers+text", text=labels, textposition="bottom center",
-        textfont=dict(color="#c7d3de", size=11), hovertext=hover, hoverinfo="text",
+        textfont=dict(color="#ffffff", size=11), hovertext=hover, hoverinfo="text",
         marker=dict(size=sizes, color=colors, line=dict(width=2, color="#05080c")),
     ))
     fig.update_layout(
@@ -322,7 +330,7 @@ with tw1:
     ])
     fig.update_layout(height=280, margin=dict(l=10, r=10, t=30, b=10),
                        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                       font=dict(color="#c7d3de"), title="Downstream assets cut off (%)")
+                       font=dict(color="#ffffff"), title="Downstream assets cut off (%)")
     st.plotly_chart(fig, width='stretch', config={"displayModeBar": False})
 with tw2:
     fig2 = go.Figure(data=[
@@ -332,7 +340,7 @@ with tw2:
     ])
     fig2.update_layout(height=280, margin=dict(l=10, r=10, t=30, b=10),
                         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                        font=dict(color="#c7d3de"), title="Recovery window (hours)")
+                        font=dict(color="#ffffff"), title="Recovery window (hours)")
     st.plotly_chart(fig2, width='stretch', config={"displayModeBar": False})
 
 st.markdown("#### \U0001F3AF MITRE ATT&CK mapping")
