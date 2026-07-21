@@ -1,0 +1,20 @@
+
+# Dashboard (app.py)
+streamlit>=1.38
+plotly>=5.22
+ 
+# Graph intelligence (Phase 3) — falls back to a pure-stdlib mock graph if absent,
+# but install it for real performance and correctness on larger topologies.
+networkx>=3.2
+ 
+# Agentic MCP bridge (mcp_server.py) — only needed if you're running the MCP
+# server, not required for the Streamlit dashboard alone.
+fastmcp>=2.0
+ 
+# --- Optional ---
+# Behavioral engine (Phase 2) auto-detects these and falls back to a built-in
+# Standardized Distance Engine if they're not installed. Uncomment for the
+# Isolation Forest model instead of the stdlib fallback:
+# pyod>=2.0
+# numpy>=1.26
+# scikit-learn>=1.4
