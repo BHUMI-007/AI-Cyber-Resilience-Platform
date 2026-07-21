@@ -39,6 +39,13 @@ h1, h2, h3 { font-family: 'Courier New', monospace !important; letter-spacing: 0
 [data-testid="stMetricDelta"], [data-testid="stWidgetLabel"] p,
 [data-testid="stExpander"] summary, [data-testid="stExpander"] summary span,
 small { color: #ffffff !important; }
+/* Sidebar stays light regardless of the dark theme everywhere else */
+[data-testid="stSidebar"], [data-testid="stSidebar"] > div {
+  background-color: #ffffff !important;
+}
+[data-testid="stSidebar"] * {
+  color: #000000 !important;
+}
 .ops-banner {
   padding: 14px 22px; border-radius: 10px; font-family: 'Courier New', monospace;
   font-size: 18px; font-weight: 700; margin-bottom: 18px; letter-spacing: 1px;
