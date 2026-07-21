@@ -7,6 +7,8 @@ consequences, not just a data breach.
 
 Built for the Economic Times hackathon.
 
+**Live demo:** https://ai-cyber-resilience-platform-6bnd6msmvy5t7wktfxrhpw.streamlit.app/
+
 ## The problem
 
 IT/OT environments are watched by tools built for one world or the other,
@@ -103,6 +105,10 @@ decision that runs in milliseconds is what this prototype is aimed at
 closing.
 
 ## Running it
+
+Try it live: https://ai-cyber-resilience-platform-6bnd6msmvy5t7wktfxrhpw.streamlit.app/
+
+Or run it locally:
 
 ```bash
 pip install -r requirements.txt
