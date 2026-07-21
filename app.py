@@ -213,11 +213,12 @@ if "result" not in st.session_state or launch or st.session_state.get("params") 
     st.session_state.params = params
     st.session_state.animate = True
     d = st.session_state.result["decision"]
+    st.session_state.approval_status = "pending" if d["human_validation_required"] else None
     st.session_state.history.append({
         "Time": time.strftime("%H:%M:%S"),
         "Scenario": preset,
-        "Anomaly": round(d["anomaly_weight"], 2),
-        "Blast radius": round(d["blast_radius_score"], 2),
+        "Anomaly": f'{d["anomaly_weight"]:.2f}',
+        "Blast radius": f'{d["blast_radius_score"]:.2f}',
         "Action": ACTION_STYLE.get(d["containment_action"], (None, d["containment_action"]))[1],
     })
     st.session_state.history = st.session_state.history[-20:]
@@ -230,11 +231,41 @@ st.markdown("## \U0001F6E1\uFE0F CNI Cyber Resilience Platform")
 st.caption("Autonomous IT/OT threat detection, reasoning, and response \u2014 live command center")
 
 action = result["decision"]["containment_action"]
-color, label = ACTION_STYLE.get(action, ("#94a3b8", action))
+requires_approval = result["decision"]["human_validation_required"]
+status = st.session_state.get("approval_status")
+
+if requires_approval and status == "pending":
+    color, label = "#fbbf24", "THROTTLED \u2014 AWAITING HUMAN APPROVAL"
+elif requires_approval and status == "approved":
+    color, label = "#fbbf24", "THROTTLING APPROVED BY ANALYST"
+elif requires_approval and status == "rejected":
+    color, label = "#f87171", "REJECTED \u2014 ESCALATED TO SOC ANALYST FOR MANUAL RESPONSE"
+else:
+    color, label = ACTION_STYLE.get(action, ("#94a3b8", action))
+
 st.markdown(
     f'<div class="ops-banner" style="background:{color}22; border:1px solid {color}; color:{color};">'
     f'\u25CF {label}</div>', unsafe_allow_html=True,
 )
+
+if requires_approval and status == "pending":
+    st.caption("The SOAR engine flagged this asset's blast radius as too high to isolate autonomously. "
+               "A human analyst needs to confirm the throttling action before it's treated as final.")
+    ap1, ap2, _ = st.columns([1, 1, 3])
+    if ap1.button("\u2705 Approve throttling", width='stretch'):
+        st.session_state.approval_status = "approved"
+        st.session_state.history.append({
+            "Time": time.strftime("%H:%M:%S"), "Scenario": preset, "Anomaly": "\u2014",
+            "Blast radius": "\u2014", "Action": "Analyst approved throttling",
+        })
+        st.rerun()
+    if ap2.button("\u274C Reject \u2192 escalate", width='stretch'):
+        st.session_state.approval_status = "rejected"
+        st.session_state.history.append({
+            "Time": time.strftime("%H:%M:%S"), "Scenario": preset, "Anomaly": "\u2014",
+            "Blast radius": "\u2014", "Action": "Analyst rejected \u2192 escalated",
+        })
+        st.rerun()
 
 # ---------------------------------------------------------------------------
 # KPI row

@@ -57,10 +57,37 @@ Being upfront about this because it matters:
   chain working end to end. One caveat: this normalizer path doesn't carry
   byte volume through from Zeek conn logs, so scoring there draws on timing
   and port-diversity drift rather than payload size.
-- **Not yet wired together:** there's no live orchestrator process
-  continuously streaming Kafka output through all five phases yet — each
-  phase is independently validated (see each folder's own README and test
-  file), and the two live-test panels above are on-demand, not continuous.
+- **Not yet wired together:** there's no continuous process streaming live
+  Kafka output through all five phases yet (see `orchestrator.py` below for
+  the closest thing to it, using replayed sample telemetry instead of a
+  live broker).
+
+## Full pipeline demo: `orchestrator.py`
+
+A single-process reference implementation that wires all 5 phases together
+end to end, without requiring a live Kafka cluster:
+
+```bash
+python orchestrator.py                 # 2 replay cycles, readable pace
+python orchestrator.py --cycles 5 --delay 0.1
+```
+
+It replays the project's own sample sensor telemetry
+(`agentless_pipeline/simulator/sample_inputs/`) through the real Phase 1
+normalizer and schema validator, warms up a genuine behavioral baseline,
+scores live traffic through Phase 2, and — when a confirmed Suricata alert
+or a behavioral score crosses threshold — runs the real Phase 3 reasoning
+agent, Phase 4 SOAR decision, and Phase 5 digital twin comparison, printing
+a live SOC console feed and a run summary. `iter_raw_events()` is the seam
+where a real Kafka consumer would plug in later.
+
+## Human-in-the-loop approval
+
+When the SOAR engine's decision requires human validation (blast radius too
+high to isolate autonomously), `app.py` now shows **Approve** / **Reject**
+buttons instead of just displaying the flag. Approving confirms the
+throttling action; rejecting escalates it for manual response. Both are
+logged to the session's incident log.
 
 ## Why this matters
 
@@ -101,6 +128,7 @@ python mcp_server.py
 ```
 .
 ├── app.py                     # Streamlit dashboard (start here)
+├── orchestrator.py              # Full 5-phase pipeline, run end to end
 ├── mcp_server.py               # Optional: agentic MCP tool bridge
 ├── requirements.txt
 ├── agentless_pipeline/          # Phase 1
