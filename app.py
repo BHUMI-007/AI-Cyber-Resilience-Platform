@@ -46,6 +46,15 @@ small { color: #ffffff !important; }
 [data-testid="stSidebar"] * {
   color: #000000 !important;
 }
+/* The button, selectbox, and slider controls keep their own dark bar
+   background even inside the white sidebar -- their text needs to stay
+   white so it's readable against that dark bar. */
+[data-testid="stSidebar"] button, [data-testid="stSidebar"] button *,
+[data-testid="stSidebar"] [data-baseweb="select"], [data-testid="stSidebar"] [data-baseweb="select"] *,
+[data-testid="stSidebar"] [data-baseweb="popover"], [data-testid="stSidebar"] [data-baseweb="popover"] *,
+[data-testid="stSidebar"] [data-baseweb="slider"], [data-testid="stSidebar"] [data-baseweb="slider"] * {
+  color: #ffffff !important;
+}
 .ops-banner {
   padding: 14px 22px; border-radius: 10px; font-family: 'Courier New', monospace;
   font-size: 18px; font-weight: 700; margin-bottom: 18px; letter-spacing: 1px;
